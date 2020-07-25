@@ -26,28 +26,27 @@ public class GenerateService {
     private String packageName;
     @Value("${camel.casing}")
     private boolean camelCasing;
+    @Value("${p.db.name}")
+    private String dbName;
 
     public void byTableName(String tableName) {
-        List<Columns> table_name = columnsDao.selectList(new EntityWrapper<Columns>().eq("table_name", tableName));
+        List<Columns> table_name = columnsDao.selectList(new EntityWrapper<Columns>().eq("table_name", tableName).eq("table_schema",dbName));
         String classString = "";
-        String classBuilderString = "";
-        String builderClassString = "";
         classString += "package " + packageName + ".beans;\n\n";
-        classString += "import lombok.Data;\nimport lombok.ToString;\n";
+        classString += "import lombok.Data;\nimport lombok.ToString;\nimport lombok.Builder;\n";
         classString += "import com.fasterxml.jackson.annotation.JsonFormat;\n";
         classString += "import java.time.LocalDateTime;\n";
-        classBuilderString += "\n\n\n    public static Builder create() {";
-        classBuilderString += "\n        return new Builder();";
-        classBuilderString += "\n    }";
-        classBuilderString += "\n\n    public " + DBUtils.casing(tableName) + "(Builder builder) {";
         classString += "\n\n@Data";
         classString += "\n@ToString";
+        classString += "\n@Builder";
         classString += "\npublic class " + DBUtils.casing(tableName) + " {";
-        builderClassString += "\n\n    @Data";
-        builderClassString += "\n    public static class Builder {";
         for (Columns columns : table_name) {
             String type = DBUtils.ConvertDBType(columns.getDataType());
             String curCol = "";
+
+            if (StringUtils.isBlank(columns.getColumnComment())) {
+                columns.setColumnComment("无注释");
+            }
             curCol += "\n    // " + columns.getColumnComment() + "";
             if (type.equalsIgnoreCase("LocalDateTime")) {
                 curCol += "\n     @JsonFormat(pattern = \"yyyy-MM-dd\", timezone = \"GMT+8\")";
@@ -59,30 +58,11 @@ public class GenerateService {
             if (camelCasing) {
                 columns.casing();
             }
-            if (StringUtils.isBlank(columns.getColumnComment())) {
-                columns.setColumnComment("无注释");
-            }
+
 
             curCol += "\n    private " + type + " " + columns.getColumnName() + ";";
             classString += curCol;
-            classBuilderString += "\n        this." + columns.getColumnName() + " = builder." + columns.getColumnName()+";";
-            builderClassString += "\n        private " + type + " " + columns.getColumnName() + ";";
-            builderClassString += "\n\n        public Builder add" + String.valueOf(columns.getColumnName().toCharArray()[0]).toUpperCase() + columns.getColumnName().substring(1) + "(" + type + " " + columns.getColumnName() + ") {";
-            builderClassString += "\n            this." + columns.getColumnName() + " = " + columns.getColumnName() + ";";
-            builderClassString += "\n            return this;";
-            builderClassString += "\n        }\n";
         }
-
-        builderClassString += "\n        public "+DBUtils.casing(tableName)+" build() {";
-        builderClassString += "\n            return new "+DBUtils.casing(tableName)+"(this);";
-        builderClassString += "\n        }";
-        classBuilderString += "\n    }";
-        builderClassString += "\n    }";
-
-
-        classString += classBuilderString;
-        classString += builderClassString;
-
         classString += "\n}";
 
         write(tableName, classString);

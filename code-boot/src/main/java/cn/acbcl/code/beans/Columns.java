@@ -7,6 +7,7 @@ import lombok.Data;
 @TableName("INFORMATION_SCHEMA.COLUMNS")
 public class Columns {
     private String columnName; //列名
+    private String tableSchema; //列名
     private String dataType; //字段类型
 //    private String characterMaximunLength; //长度
     private String isNullable; //是否为空
